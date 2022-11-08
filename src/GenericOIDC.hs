@@ -41,7 +41,7 @@ oidcAuth widget config =
 
     let unKey = username_attribute config
 
-    username <- case fromQuery "preferred_username" _String json of
+    username <- case fromQuery "preferred_username" (_String) json of
       Nothing -> throwIO $ YesodOAuth2Exception.JSONDecodingError pluginName ("No such key " <> show unKey <> " in response.")
       Just s -> return s
 
