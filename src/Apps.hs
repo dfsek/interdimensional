@@ -15,7 +15,7 @@ data AccessConfig
   = PublicApp
       {}
   | AuthenticatedApp
-      {role :: Text}
+      {match_config :: MatchConfig}
   deriving (Eq, Show, FromJSON, Generic)
 
 data AppConfig = AppConfig
@@ -24,7 +24,6 @@ data AppConfig = AppConfig
     image_path :: Maybe Text,
     source_uri :: URIRef Absolute,
     description :: Text,
-    access :: AccessConfig,
-    match :: MatchConfig
+    access :: AccessConfig
   }
   deriving (Eq, Show, FromJSON, Generic)

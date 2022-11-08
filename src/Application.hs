@@ -12,20 +12,25 @@
 
 module Application where
 
+import Apps
 import ClassyPrelude.Yesod (ReaderT, fromString, newManager, pack, runMigration, unpack, (</>))
+import Data.Aeson (decodeStrict, eitherDecodeStrict)
+import Data.ByteString (ByteString)
 import Data.Yaml.Aeson (decodeFileEither)
-import GenericOIDC (oidcAuth')
+import GenericOIDC
+import InterdimensionalConfig
 import System.Directory (createDirectoryIfMissing)
 import Text.Cassius
 import Text.Julius
 import URI.ByteString ()
-import InterdimensionalConfig
 import Yesod
 import Yesod.Auth
+import Yesod.Auth.OAuth2 (getUserResponseJSON)
 import Yesod.Auth.OAuth2.Prelude
 import Yesod.Form.Bootstrap3
 import Yesod.Static
 import Prelude
+import Match
 
 data Interdimensional = Interdimensional
   { httpManager :: Manager,
@@ -55,7 +60,8 @@ h1, h2, h3
 |]
 
 footer :: WidgetFor Interdimensional ()
-footer = [whamlet|
+footer =
+  [whamlet|
 <p>
   <a href=@{HomeR}>Home</a>
 |]
@@ -75,7 +81,18 @@ isSignedIn = do
 
 instance YesodAuth Interdimensional where
   type AuthId Interdimensional = Text
-  authenticate = return . Authenticated . credsIdent
+  authenticate creds = do
+    let json :: Either String Value
+        json = getUserResponseJSON creds
+        userName = credsIdent creds
+    case json of
+      Left e -> return $ ServerError $ pack $ "Unable to parse JSON" <> e
+      Right j -> do
+        liftIO $ do
+          print "auth json"
+          print $ toJsonText j
+        setSession "_OIDC" $ toJsonText j
+        return $ Authenticated userName
   loginDest _ = HomeR
   logoutDest _ = HomeR
   authPlugins y = [oidcAuth' $ oidc $ config y]
@@ -88,31 +105,50 @@ getHomeR :: Handler Html
 getHomeR = do
   user <- maybeAuthId
   mmsg <- getMessage
-  defaultLayout
-    [whamlet|
-          ^{css}
-          <h1>Welcome to Interdimensional!
-          <p>Interdimensional is a free application portal, made for homelabs. It lets users see what applications
-            they can access, via OpenID Connect.
-          <p>It is written in 
-            <a href="https://www.haskell.org/">Haskell
-            and uses the 
-            <a href="https://www.yesodweb.com/">Yesod
-            web framework. You can find the source code
-            <a href="https://github.com/dfsek/interdimensional">Here</a>.
-            Enjoy!
-          $maybe un <- user
-            <p>Logged in as #{un}
-            <p>
-              <a href=@{AuthR LogoutR}>Log out
-          $nothing
-            <p>
-              <a href=@{AuthR LoginR}>Log in
-          $maybe msg <- mmsg
-            <p>#{msg}
-          ^{footer}
-        |]
-
+  interdimensional <- getYesod
+  json <- (>>= (decodeStrict :: ByteString -> Maybe Value)) <$> lookupSessionBS "_OIDC"
+  defaultLayout $ case json of
+    Just j ->
+      let idConfig = config interdimensional
+          hasAccess app = case access app of
+              PublicApp -> True
+              AuthenticatedApp m -> match j m
+          filtered = filter hasAccess $ apps idConfig
+      in
+      [whamlet|
+              ^{css}
+              <h1>Welcome to Interdimensional!
+              <p>Interdimensional is a free application portal, made for homelabs. It lets users see what applications
+                they can access, via OpenID Connect.
+              <p>It is written in 
+                <a href="https://www.haskell.org/">Haskell
+                and uses the 
+                <a href="https://www.yesodweb.com/">Yesod
+                web framework. You can find the source code
+                <a href="https://github.com/dfsek/interdimensional">Here</a>.
+                Enjoy!
+              $maybe un <- user
+                <p>Logged in as #{un}
+                <p>
+                  <a href=@{AuthR LogoutR}>Log out
+              $nothing
+                <p>
+                  <a href=@{AuthR LoginR}>Log in
+              $maybe msg <- mmsg
+                <p>#{msg}
+              <h2>
+                Your Apps
+              $forall app <- filtered
+                <h3>
+                  #{name app}
+                <p>
+                  #{description app}
+                  
+              ^{footer}
+            |]
+    Nothing ->
+      [whamlet|
+        Error|] -- TODO - make not bad
 
 appMain :: IO ()
 appMain = do

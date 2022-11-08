@@ -2,7 +2,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 
-module GenericOIDC (oidcAuth, oidcAuth') where
+module GenericOIDC (oidcAuth, oidcAuth', decodeAuthJSON) where
 
 import ClassyPrelude.Yesod (WidgetFor, whamlet)
 import Data.ByteString.Lazy (ByteString)
@@ -17,6 +17,8 @@ import Prelude
 import Lens.Micro ((^?))
 import Control.Lens (Prism')
 import Match
+import Yesod (setSession, liftIO)
+import Util
 
 
 oidcAuth' :: YesodAuth m => OIDCConfig -> AuthPlugin m
@@ -42,8 +44,6 @@ oidcAuth widget config =
     username <- case fromQuery "preferred_username" _String json of
       Nothing -> throwIO $ YesodOAuth2Exception.JSONDecodingError pluginName ("No such key " <> show unKey <> " in response.")
       Just s -> return s
-
-    putStrLn $ "Username: " <> unpack username
 
     pure
       Creds
