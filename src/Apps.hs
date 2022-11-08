@@ -21,7 +21,7 @@ data AccessConfig
 data AppConfig = AppConfig
   { name :: Text,
     app_uri :: URIRef Absolute,
-    image_path :: Maybe Text,
+    image_path :: Maybe (URIRef Absolute),
     source_uri :: URIRef Absolute,
     description :: Text,
     access :: AccessConfig

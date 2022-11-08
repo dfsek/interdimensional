@@ -31,6 +31,7 @@ import Yesod.Form.Bootstrap3
 import Yesod.Static
 import Prelude
 import Match
+import Util
 
 data Interdimensional = Interdimensional
   { httpManager :: Manager,
@@ -48,22 +49,39 @@ mkYesod
 css :: p -> Css
 css =
   [cassius|
+#apps_table
+  display: table
+  width: 100%
+  border-collapse: collapse
+
+.apps_row
+  height: 50px
+
+td
+  padding: 10px
+ 
+.apps_row:nth-child(even)
+  background-color: rgb(43, 47, 49)
+
+.app_icon
+  height: 100%
+  max-width: 175px;
+  max-height: 50px;
+  vertical-align: middle
+
+a
+  color: #3391ff
+
+html
+  color: rgb(189, 183, 175)
+  background-color: #181a1b
 body
   margin: 40px auto
-  max-width: 650px
   line-height: 1.6
   font-size: 18px
-  color: #444
   padding: 0 10px
 h1, h2, h3
   line-height: 1.2
-|]
-
-footer :: WidgetFor Interdimensional ()
-footer =
-  [whamlet|
-<p>
-  <a href=@{HomeR}>Home</a>
 |]
 
 instance Yesod Interdimensional where
@@ -114,19 +132,11 @@ getHomeR = do
               PublicApp -> True
               AuthenticatedApp m -> match j m
           filtered = filter hasAccess $ apps idConfig
+         
       in
       [whamlet|
               ^{css}
               <h1>Welcome to Interdimensional!
-              <p>Interdimensional is a free application portal, made for homelabs. It lets users see what applications
-                they can access, via OpenID Connect.
-              <p>It is written in 
-                <a href="https://www.haskell.org/">Haskell
-                and uses the 
-                <a href="https://www.yesodweb.com/">Yesod
-                web framework. You can find the source code
-                <a href="https://github.com/dfsek/interdimensional">Here</a>.
-                Enjoy!
               $maybe un <- user
                 <p>Logged in as #{un}
                 <p>
@@ -138,13 +148,28 @@ getHomeR = do
                 <p>#{msg}
               <h2>
                 Your Apps
-              $forall app <- filtered
-                <h3>
-                  #{name app}
-                <p>
-                  #{description app}
-                  
-              ^{footer}
+              <table #apps_table>
+                <tr>
+                  <td>
+                    <b>App/Link
+                  <td>
+                    <b>Description
+                  <td>
+                    <b>Source Code
+                $forall app <- filtered
+                  <tr .apps_row>
+                    <td>
+                      <a href=#{uriToText (app_uri app)}>
+                        $maybe img <- uriToText <$> image_path app
+                          <img .app_icon src=#{img}> 
+                        $nothing
+                          #{name app}
+                        
+                    <td>
+                      #{description app}
+                    <td>
+                      <a href=#{uriToText (source_uri app)}>
+                        Source Code
             |]
     Nothing ->
       [whamlet|
