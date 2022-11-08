@@ -12,13 +12,8 @@ import qualified Yesod.Auth.OAuth2.Exception as YesodOAuth2Exception
 import Yesod.Auth.OAuth2.Prelude
 import Data.Aeson (Value)
 import Data.Aeson.Lens
-import Data.Text (unpack, splitOn)
 import Prelude
-import Lens.Micro ((^?))
-import Control.Lens (Prism')
 import Match
-import Yesod (setSession, liftIO)
-import Util
 
 
 oidcAuth' :: YesodAuth m => OIDCConfig -> AuthPlugin m
@@ -41,7 +36,7 @@ oidcAuth widget config =
 
     let unKey = username_attribute config
 
-    username <- case fromQuery "preferred_username" (_String) json of
+    username <- case fromQuery "preferred_username" _String json of
       Nothing -> throwIO $ YesodOAuth2Exception.JSONDecodingError pluginName ("No such key " <> show unKey <> " in response.")
       Just s -> return s
 

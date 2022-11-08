@@ -13,8 +13,8 @@
 module Application where
 
 import Apps
-import ClassyPrelude.Yesod (ReaderT, fromString, newManager, pack, runMigration, unpack, (</>))
-import Data.Aeson (decodeStrict, eitherDecodeStrict)
+import ClassyPrelude.Yesod (newManager, pack)
+import Data.Aeson (decodeStrict)
 import Data.ByteString (ByteString)
 import Data.Yaml.Aeson (decodeFileEither)
 import GenericOIDC
@@ -22,7 +22,6 @@ import InterdimensionalConfig
 import Match
 import System.Directory (createDirectoryIfMissing)
 import Text.Cassius
-import Text.Julius
 import URI.ByteString ()
 import Util
 import qualified Web.ClientSession as CS
@@ -30,7 +29,6 @@ import Yesod
 import Yesod.Auth
 import Yesod.Auth.OAuth2 (getUserResponseJSON)
 import Yesod.Auth.OAuth2.Prelude
-import Yesod.Form.Bootstrap3
 import Yesod.Static
 import Prelude
 
