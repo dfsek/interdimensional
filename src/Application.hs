@@ -25,6 +25,7 @@ import Text.Cassius
 import Text.Julius
 import URI.ByteString ()
 import Util
+import qualified Web.ClientSession as CS
 import Yesod
 import Yesod.Auth
 import Yesod.Auth.OAuth2 (getUserResponseJSON)
@@ -32,7 +33,6 @@ import Yesod.Auth.OAuth2.Prelude
 import Yesod.Form.Bootstrap3
 import Yesod.Static
 import Prelude
-import Data.Functor (($>))
 
 data Interdimensional = Interdimensional
   { httpManager :: Manager,
@@ -88,8 +88,8 @@ h1, h2, h3
 instance Yesod Interdimensional where
   approot = ApprootMaster $ host . config
   authRoute _ = Just $ AuthR LoginR
-
   isAuthorized _ _ = return Authorized
+  makeSessionBackend _ = Just <$> defaultClientSessionBackend (7 * 24 * 60) CS.defaultKeyFile
 
 isSignedIn :: HandlerFor Interdimensional AuthResult
 isSignedIn = do
@@ -140,13 +140,6 @@ getHomeR = do
     [whamlet|
     ^{css}
     <h1>Welcome to Interdimensional!
-    $maybe un <- user
-      <p>Logged in as #{un}
-      <p>
-        <a href=@{AuthR LogoutR}>Log out
-    $nothing
-      <p>
-        <a href=@{AuthR LoginR}>Log in
     $maybe msg <- mmsg
       <p>#{msg}
     <h2>
@@ -173,7 +166,15 @@ getHomeR = do
           <td>
             <a href=#{uriToText (source_uri app)}>
               Source Code
+    <p>
+      $maybe un <- user
+        Logged in as #{un} 
+        | <a href=@{AuthR LogoutR}>Log out</a> 
+      $nothing
+        <a href=@{AuthR LoginR}>Log in</a> 
+      | Interdimensional by <a href="https://dfsek.com/">dfsek</a> | <a href="https://github.com/dfsek/interdimensional">Source Code
             |]
+    
 
 appMain :: IO ()
 appMain = do
