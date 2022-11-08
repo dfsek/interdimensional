@@ -16,6 +16,7 @@ import Data.Text (unpack, splitOn)
 import Prelude
 import Lens.Micro ((^?))
 import Control.Lens (Prism')
+import Match
 
 
 oidcAuth' :: YesodAuth m => OIDCConfig -> AuthPlugin m
@@ -59,11 +60,6 @@ oidcAuth widget config =
           oauth2TokenEndpoint = token_url config,
           oauth2RedirectUri = Nothing
         }
-
-fromQuery :: Text -> Prism' Value a -> Value -> Maybe a
-fromQuery string get = (^? foldl append id tokens . get) where
-  tokens = splitOn "." string
-  append f token = f . key token
 
 fromAuthGet :: Text -> Either ByteString ByteString -> IO ByteString
 fromAuthGet _ (Right bs) = pure bs -- nice

@@ -9,6 +9,7 @@ import Data.Yaml (FromJSON)
 import GHC.Generics (Generic)
 import URI.ByteString (Absolute, URIRef)
 import URI.ByteString.Aeson ()
+import Match
 
 data AccessConfig
   = PublicApp
@@ -23,6 +24,7 @@ data AppConfig = AppConfig
     image_path :: Maybe Text,
     source_uri :: URIRef Absolute,
     description :: Text,
-    access :: AccessConfig
+    access :: AccessConfig,
+    match :: MatchConfig
   }
   deriving (Eq, Show, FromJSON, Generic)
