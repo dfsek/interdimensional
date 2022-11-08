@@ -19,10 +19,12 @@ import Data.ByteString (ByteString)
 import Data.Yaml.Aeson (decodeFileEither)
 import GenericOIDC
 import InterdimensionalConfig
+import Match
 import System.Directory (createDirectoryIfMissing)
 import Text.Cassius
 import Text.Julius
 import URI.ByteString ()
+import Util
 import Yesod
 import Yesod.Auth
 import Yesod.Auth.OAuth2 (getUserResponseJSON)
@@ -30,8 +32,7 @@ import Yesod.Auth.OAuth2.Prelude
 import Yesod.Form.Bootstrap3
 import Yesod.Static
 import Prelude
-import Match
-import Util
+import Data.Functor (($>))
 
 data Interdimensional = Interdimensional
   { httpManager :: Manager,
@@ -107,7 +108,6 @@ instance YesodAuth Interdimensional where
       Left e -> return $ ServerError $ pack $ "Unable to parse JSON" <> e
       Right j -> do
         liftIO $ do
-          print "auth json"
           print $ toJsonText j
         setSession "_OIDC" $ toJsonText j
         return $ Authenticated userName
@@ -125,55 +125,55 @@ getHomeR = do
   mmsg <- getMessage
   interdimensional <- getYesod
   json <- (>>= (decodeStrict :: ByteString -> Maybe Value)) <$> lookupSessionBS "_OIDC"
-  defaultLayout $ case json of
-    Just j ->
-      let idConfig = config interdimensional
-          hasAccess app = case access app of
+
+  let idConfig = config interdimensional
+      filtered =
+        filter
+          ( \app -> case access app of
               PublicApp -> True
-              AuthenticatedApp m -> match j m
-          filtered = filter hasAccess $ apps idConfig
-         
-      in
-      [whamlet|
-              ^{css}
-              <h1>Welcome to Interdimensional!
-              $maybe un <- user
-                <p>Logged in as #{un}
-                <p>
-                  <a href=@{AuthR LogoutR}>Log out
+              AuthenticatedApp m -> case user >> json of -- if user is unauthenticated, ignore session data.
+                Just j -> match j m
+                Nothing -> False
+          )
+          $ apps idConfig
+  defaultLayout
+    [whamlet|
+    ^{css}
+    <h1>Welcome to Interdimensional!
+    $maybe un <- user
+      <p>Logged in as #{un}
+      <p>
+        <a href=@{AuthR LogoutR}>Log out
+    $nothing
+      <p>
+        <a href=@{AuthR LoginR}>Log in
+    $maybe msg <- mmsg
+      <p>#{msg}
+    <h2>
+      Your Apps
+    <table #apps_table>
+      <tr>
+        <td>
+          <b>App/Link
+        <td>
+          <b>Description
+        <td>
+          <b>Source Code
+      $forall app <- filtered
+        <tr .apps_row>
+          <td>
+            <a href=#{uriToText (app_uri app)}>
+              $maybe img <- uriToText <$> image_path app
+                <img .app_icon src=#{img}> 
               $nothing
-                <p>
-                  <a href=@{AuthR LoginR}>Log in
-              $maybe msg <- mmsg
-                <p>#{msg}
-              <h2>
-                Your Apps
-              <table #apps_table>
-                <tr>
-                  <td>
-                    <b>App/Link
-                  <td>
-                    <b>Description
-                  <td>
-                    <b>Source Code
-                $forall app <- filtered
-                  <tr .apps_row>
-                    <td>
-                      <a href=#{uriToText (app_uri app)}>
-                        $maybe img <- uriToText <$> image_path app
-                          <img .app_icon src=#{img}> 
-                        $nothing
-                          #{name app}
-                        
-                    <td>
-                      #{description app}
-                    <td>
-                      <a href=#{uriToText (source_uri app)}>
-                        Source Code
+                #{name app}
+              
+          <td>
+            #{description app}
+          <td>
+            <a href=#{uriToText (source_uri app)}>
+              Source Code
             |]
-    Nothing ->
-      [whamlet|
-        Error|] -- TODO - make not bad
 
 appMain :: IO ()
 appMain = do
